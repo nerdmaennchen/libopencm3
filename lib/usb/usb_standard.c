@@ -368,8 +368,6 @@ usb_standard_set_interface(usbd_device *usbd_dev,
 
 	if (iface->cur_altsetting) {
 		*iface->cur_altsetting = req->wValue;
-	} else if (req->wValue > 0) {
-		return USBD_REQ_NOTSUPP;
 	}
 
 	if (usbd_dev->user_callback_set_altsetting) {
