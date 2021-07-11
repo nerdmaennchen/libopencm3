@@ -176,22 +176,24 @@ static void usb_control_setup_read(usbd_device *usbd_dev,
 	usbd_dev->control_state.ctrl_buf = usbd_dev->ctrl_buf;
 	usbd_dev->control_state.ctrl_len = req->wLength;
 
-	if (usb_control_request_dispatch(usbd_dev, req)) {
-		if (req->wLength) {
-			usbd_dev->control_state.needs_zlp =
-				needs_zlp(usbd_dev->control_state.ctrl_len,
-					req->wLength,
-					usbd_dev->desc->bMaxPacketSize0);
-			/* Go to data out stage if handled. */
-			usb_control_send_chunk(usbd_dev);
-		} else {
-			/* Go to status stage if handled. */
-			usbd_ep_write_packet(usbd_dev, 0, NULL, 0);
-			usbd_dev->control_state.state = STATUS_IN;
-		}
-	} else {
+	int r = usb_control_request_dispatch(usbd_dev, req);
+	if (r == USBD_REQ_NOTSUPP) {
 		/* Stall endpoint on failure. */
 		stall_transaction(usbd_dev);
+		return;
+	}
+	
+	if (req->wLength) {
+		usbd_dev->control_state.needs_zlp =
+			needs_zlp(usbd_dev->control_state.ctrl_len,
+				req->wLength,
+				usbd_dev->desc->bMaxPacketSize0);
+		/* Go to data out stage if handled. */
+		usb_control_send_chunk(usbd_dev);
+	} else {
+		/* Go to status stage if handled. */
+		usbd_ep_write_packet(usbd_dev, 0, NULL, 0);
+		usbd_dev->control_state.state = STATUS_IN;
 	}
 }
 
