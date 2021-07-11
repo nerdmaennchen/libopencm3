@@ -364,11 +364,20 @@ void dwc_poll(usbd_device *usbd_dev)
 		}
 
 		if (pktsts == OTG_GRXSTSP_PKTSTS_OUT_COMP
-			|| pktsts == OTG_GRXSTSP_PKTSTS_SETUP_COMP)  {
+			|| pktsts == OTG_GRXSTSP_PKTSTS_SETUP_COMP) {
 			REBASE(OTG_DOEPTSIZ(ep)) = usbd_dev->doeptsiz[ep];
-			REBASE(OTG_DOEPCTL(ep)) |= OTG_DOEPCTL0_EPENA |
+			uint32_t doepctl = OTG_DOEPCTL0_EPENA |
 				(usbd_dev->force_nak[ep] ?
-				 OTG_DOEPCTL0_SNAK : OTG_DOEPCTL0_CNAK);
+				OTG_DOEPCTL0_SNAK : OTG_DOEPCTL0_CNAK);
+			if (((REBASE(OTG_DOEPCTL(ep)) >> 18) & 0x3) == USB_ENDPOINT_ATTR_ISOCHRONOUS) {
+				if ((REBASE(OTG_DSTS) & 0x100) != 0) {
+					doepctl |= OTG_DOEPCTLX_SD0PID;
+				} else {
+					doepctl |= 1 << 29;
+				}
+			}
+			
+			REBASE(OTG_DOEPCTL(ep)) |= doepctl;
 			return;
 		}
 
